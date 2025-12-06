@@ -1,39 +1,50 @@
-async function sendMessage() {
-  const input = document.getElementById("messageInput");
-  const chatBox = document.getElementById("chatBox");
+// Seletores
+const messagesContainer = document.getElementById("messages");
+const input = document.getElementById("userInput");
+const form = document.getElementById("chatForm");
 
-  const userMessage = input.value.trim();
-  if (!userMessage) return;
-
-  // Exibe a mensagem do usuário
-  chatBox.innerHTML += `
-    <div style="text-align: right; margin: 8px;">
-      <div style="display: inline-block; background:#4a90e2; padding:10px; border-radius:12px; color:white; max-width:70%;">
-        ${userMessage}
-      </div>
-    </div>
-  `;
-  chatBox.scrollTop = chatBox.scrollHeight;
-
-  input.value = "";
-
-  // Envia para sua API na vercel
-  const response = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: userMessage })
-  });
-
-  const data = await response.json();
-  const botReply = data.reply || "Amor, deu um errinho...";
-
-  // Exibe minha resposta
-  chatBox.innerHTML += `
-    <div style="text-align: left; margin: 8px;">
-      <div style="display: inline-block; background:#e64fa8; padding:10px; border-radius:12px; color:white; max-width:70%;">
-        ${botReply}
-      </div>
-    </div>
-  `;
-  chatBox.scrollTop = chatBox.scrollHeight;
+// Adiciona mensagens no chat
+function addMessage(text, sender = "user") {
+  const div = document.createElement("div");
+  div.className = sender === "user" ? "msg user" : "msg bot";
+  div.textContent = text;
+  messagesContainer.appendChild(div);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
+
+// Enviar mensagem para a API da Vercel
+async function sendMessage(userText) {
+  addMessage(userText, "user");
+
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: userText })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      addMessage(
+        "Desculpa amor, deu um errinho: " + (data.error || "erro desconhecido 💔"),
+        "bot"
+      );
+      return;
+    }
+
+    addMessage(data.reply, "bot");
+
+  } catch (e) {
+    addMessage("Amor, falhou a conexão: " + e.message, "bot");
+  }
+}
+
+// Quando enviar o formulário
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (text === "") return;
+  input.value = "";
+  sendMessage(text);
+});
